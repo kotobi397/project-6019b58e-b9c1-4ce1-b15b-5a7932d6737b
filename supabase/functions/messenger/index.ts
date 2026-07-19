@@ -2665,14 +2665,21 @@ async function handleEvent(ev: any, pageId: string | null) {
       !!sess?.query &&
       Date.now() - new Date(sess.updated_at ?? 0).getTime() < 30 * 60 * 1000;
 
-    const { data: lastBotRow } = await admin
+    const { data: recentRows } = await admin
       .from("messages")
-      .select("message_text")
+      .select("sender_type, message_text")
       .eq("facebook_user_id", senderId)
-      .eq("sender_type", "bot")
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(10);
+    const recentAsc = (recentRows ?? []).slice().reverse();
+    const recentHistory: { role: "user" | "assistant"; content: string }[] = recentAsc
+      .map((r: any) => ({
+        role: (r.sender_type === "bot" ? "assistant" : "user") as "user" | "assistant",
+        content: String(r.message_text ?? "").slice(0, 300),
+      }))
+      .filter((m) => m.content)
+      .slice(-8);
+    const lastBotRow = [...recentAsc].reverse().find((r: any) => r.sender_type === "bot");
     const lastBot = (lastBotRow?.message_text as string | undefined) ?? "";
 
     // Fast-path: strong keyword match forces map intent before the LLM classifier.
