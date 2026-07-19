@@ -8,7 +8,7 @@ import { isTempEmailIntent, handleTempEmailIntent, pollAllActive, createTempEmai
 const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
 const FB_API = "https://graph.facebook.com/v19.0/me/messages";
 // Mistral Large 3: official model id from Mistral docs, multimodal + function calling.
-const TEXT_MODEL = "mistral-small-2603";
+const TEXT_MODEL = "mistral-medium-3-5";
 // Pixtral Large — أقوى نموذج رؤية من Mistral (124B) لتحليل الصور بأعلى دقة.
 const VISION_MODEL = "mistral-medium-latest";
 const HISTORY_LIMIT = 60; // last 60 messages always sent
@@ -481,7 +481,7 @@ async function moderateMessage(text: string): Promise<{ reason: string } | null>
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: "mistral-small-2603",
+        model: "mistral-medium-3-5",
         temperature: 0,
         max_tokens: 120,
         response_format: { type: "json_object" },
@@ -1712,7 +1712,7 @@ async function sendNsfwRefusal(senderId: string, pageToken: string, admin: any, 
 }
 
 // طبقة ثانية: مصنّف عبر LLM يلتقط الطلبات المموّهة/غير المباشرة (roleplay، ترميز، لغات نادرة…)
-// يعتمد الآن كلياً على Mistral AI (mistral-small-2603). يفشل بأمان (يسمح) لتفادي حجب الطلبات البريئة عند تعطّل الخدمة.
+// يعتمد الآن كلياً على Mistral AI (mistral-medium-3-5). يفشل بأمان (يسمح) لتفادي حجب الطلبات البريئة عند تعطّل الخدمة.
 async function llmIsUnsafeImagePrompt(text: string): Promise<boolean> {
   const key = await getMistralKey();
   if (!key || !text.trim()) return false;
@@ -1721,7 +1721,7 @@ async function llmIsUnsafeImagePrompt(text: string): Promise<boolean> {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "mistral-small-2603",
+        model: "mistral-medium-3-5",
         messages: [
           { role: "system", content: "أنت مصنِّف سلامة للصور. أجب بكلمة واحدة فقط: UNSAFE أو SAFE. اعتبر الطلب UNSAFE إذا كان يطلب أو يلمّح إلى: محتوى جنسي/إباحي/إيحائي، عُري كامل أو جزئي، ملابس داخلية بشكل مثير، أوضاع جنسية، fetish/BDSM، قاصرين في أي سياق موحٍ، عنف صريح أو دموي، إيذاء ذات، رموز كراهية، أو أي محتوى يخالف سياسات Meta/Messenger. الطلبات الفنية العادية (طبيعة، حيوانات، هندسة، طعام، شخصيات محتشمة…) SAFE." },
           { role: "user", content: `صنّف طلب الصورة التالي:\n\"\"\"${text.slice(0, 800)}\"\"\"` },
@@ -3640,7 +3640,7 @@ async function classifyBookIntentSmart(
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: "mistral-small-2603",
+        model: "mistral-medium-3-5",
         temperature: 0,
         max_tokens: 160,
         response_format: { type: "json_object" },
@@ -3685,7 +3685,7 @@ async function classifyImageIntent(
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: "mistral-small-2603",
+        model: "mistral-medium-3-5",
         temperature: 0,
         max_tokens: 120,
         response_format: { type: "json_object" },
@@ -3731,7 +3731,7 @@ async function _inferBookSearchIntent(
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: "mistral-small-2603",
+        model: "mistral-medium-3-5",
         temperature: 0,
         max_tokens: 220,
         response_format: { type: "json_object" },
@@ -4885,7 +4885,7 @@ async function classifyMangaIntentSmart(
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: "mistral-small-2603",
+        model: "mistral-medium-3-5",
         temperature: 0,
         max_tokens: 120,
         response_format: { type: "json_object" },
@@ -4934,7 +4934,7 @@ async function classifyUnifiedIntent(
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: "mistral-small-2603",
+        model: "mistral-medium-3-5",
         temperature: 0,
         max_tokens: 160,
         response_format: { type: "json_object" },
