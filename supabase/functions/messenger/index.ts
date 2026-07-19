@@ -2236,12 +2236,27 @@ async function handleEvent(ev: any, pageId: string | null) {
   let text: string = (ev?.message?.text ?? "").trim();
 
   const attachments: any[] = ev?.message?.attachments ?? [];
+  // Facebook "like" thumb + all other stickers arrive as attachment.type === "image"
+  // with a sticker_id. Treat them as stickers (ignore/react), never as real photos.
+  const LIKE_STICKER_IDS = new Set(["369239263222822", "369239343222814", "369239383222810"]);
+  const stickerAttachments = attachments.filter((a) => a?.payload?.sticker_id != null);
+  const isLikeSticker = stickerAttachments.some((a) => LIKE_STICKER_IDS.has(String(a.payload.sticker_id)));
+  const rawText = String(ev?.message?.text ?? "").trim();
+  const isOnlySticker = stickerAttachments.length > 0 && stickerAttachments.length === attachments.length && !rawText;
   const imageUrls: string[] = attachments
-    .filter((a) => a?.type === "image" && a?.payload?.url)
+    .filter((a) => a?.type === "image" && a?.payload?.url && a?.payload?.sticker_id == null)
     .map((a) => a.payload.url as string);
   const audioUrls: string[] = attachments
     .filter((a) => a?.type === "audio" && a?.payload?.url)
     .map((a) => a.payload.url as string);
+
+  // Short-circuit: user sent only a sticker (e.g. thumbs-up). Reply once with a
+  // matching emoji and stop — do not run the image "save or analyze" flow.
+  if (isOnlySticker) {
+    const reply = isLikeSticker ? "👍" : "😊";
+    await sendAndLog(admin, senderId, reply, pageId, Date.now(), mid ?? null);
+    return;
+  }
   const { extractShareItems, buildVideoShareContextFromItems } = await import("./video_share.ts");
   const videoShareItems = extractShareItems(attachments);
   const videoShareUrls: string[] = videoShareItems.map((i) => i.url);
