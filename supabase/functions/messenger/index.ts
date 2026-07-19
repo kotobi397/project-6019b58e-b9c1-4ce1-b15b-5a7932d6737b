@@ -4922,7 +4922,19 @@ async function classifyUnifiedIntent(
   lastBot: string,
   hasActiveImageSession: boolean,
 ): Promise<
-  | { intent: "image_search" | "image_more" | "book" | "manga" | "map" | "satellite" | "chat"; query: string }
+  | {
+      intent:
+        | "book_request"
+        | "image_request"
+        | "temp_mail"
+        | "scan_link"
+        | "general_chat"
+        | "image_more"
+        | "manga"
+        | "map";
+      target: string;
+      query: string;
+    }
   | null
 > {
   const key = await getMistralKey();
@@ -4934,13 +4946,13 @@ async function classifyUnifiedIntent(
       body: JSON.stringify({
         model: "mistral-medium-3-5",
         temperature: 0,
-        max_tokens: 200,
+        max_tokens: 250,
         response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
             content:
-              'أنت مصنّف نية دقيق جداً لبوت عربي متعدد المهام يعمل عبر ماسنجر. افهم قصد المستخدم من المعنى لا من الكلمات. استخدم معرفتك الواسعة بالأدب العربي والعالمي والمؤلفين المشهورين.\n\nالفئات:\n- "image_search": يطلب صوراً حقيقية من الإنترنت لشيء/شخص/مكان.\n- "image_more": المزيد من نفس بحث الصور السابق (فقط إذا has_active_image_session=true).\n- "book": يطلب/يذكر كتاباً أو رواية أو مؤلفاً حقيقياً بأي صياغة، حتى بلا كلمة "كتاب/رواية". أمثلة: "المقدمة لابن خلدون"، "دوستويفسكي"، "١٩٨٤"، "الأسود يليق بك"، "احلام مستغانمي"، "give me kafka"، "اريد اقرا شي لنجيب محفوظ"، "عندك كليلة ودمنة؟"، "ذاكرة الجسد"، "شي لطه حسين".\n- "manga": مانغا/مانهوا/كوميك ياباني أو كوري.\n- "map": موقع/خريطة عادية لمكان جغرافي (مدينة، شارع، معلم…). أمثلة: "وين تقع باريس"، "خريطة الرباط".\n- "satellite": صورة قمر صناعي/جوية لمكان.\n- "chat": أي شيء آخر — تحية، سؤال عام/ديني/علمي، طلب توليد صورة بالذكاء الاصطناعي، شكر، حوار.\n\nقواعد مهمة:\n1. اسم كتاب معروف أو اسم مؤلف معروف وحده = "book" (اعتمد على معرفتك الأدبية، لا تحتاج كلمة "كتاب").\n2. "ما رأيك في رواية X" أو "لخّص لي X" = chat (سؤال/معالجة، ليس طلب جلب).\n3. طلب توليد صورة بالذكاء الاصطناعي ("تخيّل"، "ارسم"، "اصنع صورة"، "imagine") = chat.\n4. "نعم/أيوه/أوك" = book إذا اقترح البوت كتاباً، image_more إذا سأل عن المزيد، وإلا chat.\n5. سؤال ديني/فقهي/شرعي عام بدون ذكر كتاب محدد = chat.\n6. للـ map/satellite: query = اسم المكان فقط.\n7. للـ book: query = اسم الكتاب أو المؤلف كما فهمته، بعد إزالة كلمات مثل "اريد/ابغى/عندك/هات/ابعتلي/ممكن/من فضلك".\n8. عند الشك بين book و chat لكلمة واحدة عامية غامضة قصيرة → chat.\n\nأعد JSON فقط: {"intent":"image_search"|"image_more"|"book"|"manga"|"map"|"satellite"|"chat","query":"..."}. لا شرح.\n\nhas_active_image_session: ' +
+              'أنت العقل المدبر لبوت فيسبوك ماسنجر يقدم خدمات متعددة. مهمتك تحليل رسالة المستخدم وتحديد الخدمة المطلوبة بدقة (intent) واستخراج القيمة أو الاسم المطلوب (target)، اعتماداً على المعنى لا على كلمات مفتاحية. استعمل معرفتك الواسعة بالأدب والثقافة لفهم أسماء الكتب والمؤلفين حتى بلا كلمة "كتاب/رواية".\n\nيجب أن تكون إجابتك فقط كائن JSON صالحاً بلا أي مقدمات، بالشكل: {"intent":"...","target":"..."}.\n\nالخدمات:\n1) "book_request" — يطلب/يذكر كتاباً أو رواية أو مؤلفاً حقيقياً. target = اسم الكتاب أو المؤلف (بدون كلمات مثل: اريد/ابغى/عندك/هات/ابعتلي/ممكن).\n2) "image_request" — يطلب صوراً حقيقية من الإنترنت لشيء/شخص/مكان. target = وصف الصورة أو الاسم.\n3) "temp_mail" — يريد بريداً إلكترونياً مؤقتاً/وهمياً/disposable/temp mail. target = null.\n4) "scan_link" — أرسل رابطاً أو طلب فحص رابط. target = الرابط.\n5) "general_chat" — أي كلام عام أو تحية أو سؤال معرفي/ديني/علمي/شخصي أو طلب توليد صورة بالذكاء الاصطناعي (ارسم/تخيّل/imagine) أو نقاش أو شكر. target = الرد المناسب مباشرة بلغة عربية طبيعية.\n\nخدمات إضافية داخلية:\n6) "image_more" — طلب المزيد من نفس بحث الصور السابق (فقط إذا has_active_image_session=true). target = "".\n7) "manga" — يطلب مانغا/مانهوا/كوميك. target = اسم العمل.\n8) "map" — يطلب موقعاً/خريطة لمكان جغرافي. target = اسم المكان.\n\nقواعد:\n- "ما رأيك في رواية X" أو "لخّص لي X" = general_chat (نقاش، ليس جلب). ضع target كرد نصي.\n- "نعم/أيوه/أوك" = book_request إذا اقترح البوت كتاباً، image_more إذا سأل عن المزيد، وإلا general_chat.\n- عند الشك في كلمة عامية قصيرة غامضة → general_chat.\n- لا تخترع روابط ولا أسماء.\n\nhas_active_image_session: ' +
               (hasActiveImageSession ? "true" : "false") +
               "\nlast_bot_message: " +
               JSON.stringify(lastBot.slice(0, 200)),
@@ -4954,9 +4966,19 @@ async function classifyUnifiedIntent(
     const raw = j?.choices?.[0]?.message?.content;
     if (!raw) return null;
     const p = typeof raw === "string" ? JSON.parse(raw) : raw;
-    const allowed = ["image_search", "image_more", "book", "manga", "map", "satellite", "chat"] as const;
-    const intent = (allowed as readonly string[]).includes(p?.intent) ? p.intent : "chat";
-    return { intent, query: String(p?.query || "").trim() };
+    const allowed = [
+      "book_request",
+      "image_request",
+      "temp_mail",
+      "scan_link",
+      "general_chat",
+      "image_more",
+      "manga",
+      "map",
+    ] as const;
+    const intent = (allowed as readonly string[]).includes(p?.intent) ? p.intent : "general_chat";
+    const target = p?.target == null ? "" : String(p.target).trim();
+    return { intent: intent as any, target, query: target };
   } catch (e) {
     console.error("[intent] unified classifier error", e);
     return null;
