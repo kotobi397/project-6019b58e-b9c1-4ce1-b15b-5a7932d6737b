@@ -4931,6 +4931,7 @@ async function classifyUnifiedIntent(
   text: string,
   lastBot: string,
   hasActiveImageSession: boolean,
+  chatHistory: { role: "user" | "assistant"; content: string }[] = [],
 ): Promise<
   | {
       intent:
