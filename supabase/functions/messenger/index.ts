@@ -1775,28 +1775,46 @@ async function generateImage(senderId: string, prompt: string, admin: any, arabi
     }).catch(() => {});
 
     // Mistral-only image generation through the Mistral Agents API.
+    // Retry aggressively: rotate through ALL available keys and retry transient
+    // failures (429 / 5xx / timeouts) with exponential backoff so the user never
+    // sees "service under pressure" for recoverable errors.
     let imgBuf: Uint8Array | null = null;
-    if (key) {
-      const agentId = await ensureImageAgent(key);
-      if (agentId) {
-        const convRes = await fetch("https://api.mistral.ai/v1/conversations", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ agent_id: agentId, inputs: cleanPrompt }),
-          signal: AbortSignal.timeout(70_000),
-        });
-        if (!convRes.ok) {
-          const t = await convRes.text();
-          console.error("[messenger] conv failed", convRes.status, t);
-          if (convRes.status === 401 || convRes.status === 403) markMistralKeyBad(key);
-          // Retry once with fresh agent in case cached id was stale
-          if (convRes.status === 404 || convRes.status === 400) {
-            cachedImageAgentId = null;
-          }
-        } else {
-          const conv = await convRes.json();
+    const allKeys = await getMistralKeys();
+    if (allKeys.length > 0) {
+      // Build attempt order: start from current rotation, then cycle. Try each key
+      // twice before giving up (total attempts = keys.length * 2, capped at 8).
+      const startIdx = key ? Math.max(0, allKeys.indexOf(key)) : 0;
+      const maxAttempts = Math.min(8, allKeys.length * 2);
+      let lastStatus = 0;
 
-          // Find tool_file chunk
+      for (let attempt = 0; attempt < maxAttempts && !imgBuf; attempt++) {
+        const tryKey = allKeys[(startIdx + attempt) % allKeys.length];
+        try {
+          const agentId = await ensureImageAgent(tryKey);
+          if (!agentId) continue;
+
+          const convRes = await fetch("https://api.mistral.ai/v1/conversations", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${tryKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ agent_id: agentId, inputs: cleanPrompt }),
+            signal: AbortSignal.timeout(90_000),
+          });
+
+          if (!convRes.ok) {
+            lastStatus = convRes.status;
+            const t = await convRes.text().catch(() => "");
+            console.error(`[messenger] conv failed (attempt ${attempt + 1}/${maxAttempts})`, convRes.status, t.slice(0, 300));
+            if (convRes.status === 401 || convRes.status === 403) markMistralKeyBad(tryKey);
+            if (convRes.status === 404 || convRes.status === 400) cachedImageAgentId = null;
+            // Backoff on rate-limit / server error before next attempt
+            if (convRes.status === 429 || convRes.status >= 500) {
+              const backoff = Math.min(4000, 500 * Math.pow(2, attempt));
+              await new Promise((r) => setTimeout(r, backoff));
+            }
+            continue;
+          }
+
+          const conv = await convRes.json();
           let fileId: string | null = null;
           const outputs = conv?.outputs ?? [];
           for (const out of outputs) {
@@ -1810,18 +1828,27 @@ async function generateImage(senderId: string, prompt: string, admin: any, arabi
           }
           if (!fileId) {
             console.error("[messenger] no file_id in response", JSON.stringify(conv).slice(0, 500));
-          } else {
-            const fileRes = await fetch(`https://api.mistral.ai/v1/files/${fileId}/content`, {
-              headers: { Authorization: `Bearer ${key}` },
-              signal: AbortSignal.timeout(30_000),
-            });
-            if (!fileRes.ok) {
-              console.error("[messenger] file download failed", fileRes.status);
-            } else {
-              imgBuf = new Uint8Array(await fileRes.arrayBuffer());
-            }
+            continue;
           }
+
+          const fileRes = await fetch(`https://api.mistral.ai/v1/files/${fileId}/content`, {
+            headers: { Authorization: `Bearer ${tryKey}` },
+            signal: AbortSignal.timeout(30_000),
+          });
+          if (!fileRes.ok) {
+            console.error("[messenger] file download failed", fileRes.status);
+            continue;
+          }
+          imgBuf = new Uint8Array(await fileRes.arrayBuffer());
+        } catch (e) {
+          console.error(`[messenger] image attempt ${attempt + 1} threw`, (e as Error)?.message);
+          // Network / timeout — brief backoff then try next key
+          await new Promise((r) => setTimeout(r, Math.min(3000, 400 * (attempt + 1))));
         }
+      }
+
+      if (!imgBuf) {
+        console.error("[messenger] all mistral image attempts failed; lastStatus=", lastStatus);
       }
     }
 
