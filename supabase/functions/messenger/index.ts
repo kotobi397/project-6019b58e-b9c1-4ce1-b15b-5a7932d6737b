@@ -2665,14 +2665,21 @@ async function handleEvent(ev: any, pageId: string | null) {
       !!sess?.query &&
       Date.now() - new Date(sess.updated_at ?? 0).getTime() < 30 * 60 * 1000;
 
-    const { data: lastBotRow } = await admin
+    const { data: recentRows } = await admin
       .from("messages")
-      .select("message_text")
+      .select("sender_type, message_text")
       .eq("facebook_user_id", senderId)
-      .eq("sender_type", "bot")
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(10);
+    const recentAsc = (recentRows ?? []).slice().reverse();
+    const recentHistory: { role: "user" | "assistant"; content: string }[] = recentAsc
+      .map((r: any) => ({
+        role: (r.sender_type === "bot" ? "assistant" : "user") as "user" | "assistant",
+        content: String(r.message_text ?? "").slice(0, 300),
+      }))
+      .filter((m) => m.content)
+      .slice(-8);
+    const lastBotRow = [...recentAsc].reverse().find((r: any) => r.sender_type === "bot");
     const lastBot = (lastBotRow?.message_text as string | undefined) ?? "";
 
     // Fast-path: strong keyword match forces map intent before the LLM classifier.
@@ -2711,7 +2718,7 @@ async function handleEvent(ev: any, pageId: string | null) {
 
 
 
-    const cls = await classifyUnifiedIntent(text, lastBot, hasActive);
+    const cls = await classifyUnifiedIntent(text, lastBot, hasActive, recentHistory);
     if (cls) {
       if (cls.intent === "image_more" && hasActive) {
         await handleImageSearch(admin, senderId, sess!.query, pageId, userMsgStart, sess!.offset_count ?? 0);
@@ -4924,6 +4931,7 @@ async function classifyUnifiedIntent(
   text: string,
   lastBot: string,
   hasActiveImageSession: boolean,
+  chatHistory: { role: "user" | "assistant"; content: string }[] = [],
 ): Promise<
   | {
       intent:
@@ -4955,11 +4963,12 @@ async function classifyUnifiedIntent(
           {
             role: "system",
             content:
-              'أنت العقل المدبر لبوت فيسبوك ماسنجر يقدم خدمات متعددة. مهمتك تحليل رسالة المستخدم وتحديد الخدمة المطلوبة بدقة (intent) واستخراج القيمة أو الاسم المطلوب (target)، اعتماداً على المعنى لا على كلمات مفتاحية. استعمل معرفتك الواسعة بالأدب والثقافة لفهم أسماء الكتب والمؤلفين حتى بلا كلمة "كتاب/رواية".\n\nيجب أن تكون إجابتك فقط كائن JSON صالحاً بلا أي مقدمات، بالشكل: {"intent":"...","target":"..."}.\n\nالخدمات:\n1) "book_request" — يطلب/يذكر كتاباً أو رواية أو مؤلفاً حقيقياً. target = اسم الكتاب أو المؤلف (بدون كلمات مثل: اريد/ابغى/عندك/هات/ابعتلي/ممكن).\n2) "image_request" — يطلب صوراً حقيقية من الإنترنت لشيء/شخص/مكان. target = وصف الصورة أو الاسم.\n3) "temp_mail" — يريد بريداً إلكترونياً مؤقتاً/وهمياً/disposable/temp mail. target = null.\n4) "scan_link" — أرسل رابطاً أو طلب فحص رابط. target = الرابط.\n5) "general_chat" — أي كلام عام أو تحية أو سؤال معرفي/ديني/علمي/شخصي أو طلب توليد صورة بالذكاء الاصطناعي (ارسم/تخيّل/imagine) أو نقاش أو شكر. target = الرد المناسب مباشرة بلغة عربية طبيعية.\n\nخدمات إضافية داخلية:\n6) "image_more" — طلب المزيد من نفس بحث الصور السابق (فقط إذا has_active_image_session=true). target = "".\n7) "manga" — يطلب مانغا/مانهوا/كوميك. target = اسم العمل.\n8) "map" — يطلب موقعاً/خريطة لمكان جغرافي. target = اسم المكان.\n\nقواعد:\n- "ما رأيك في رواية X" أو "لخّص لي X" = general_chat (نقاش، ليس جلب). ضع target كرد نصي.\n- "نعم/أيوه/أوك" = book_request إذا اقترح البوت كتاباً، image_more إذا سأل عن المزيد، وإلا general_chat.\n- عند الشك في كلمة عامية قصيرة غامضة → general_chat.\n- لا تخترع روابط ولا أسماء.\n\nhas_active_image_session: ' +
+              'أنت العقل المدبر لبوت فيسبوك ماسنجر يقدم خدمات متعددة. مهمتك تحليل رسالة المستخدم الأخيرة مع الأخذ بعين الاعتبار سياق المحادثة السابقة (chat history) لفهم الإشارات والضمائر ("هو/هي/هذا/الكتاب اللي قلتلك عليه/كمان/المزيد/نعم")، وتحديد الخدمة المطلوبة بدقة (intent) واستخراج القيمة أو الاسم المطلوب (target)، اعتماداً على المعنى لا على كلمات مفتاحية. استعمل معرفتك الواسعة بالأدب والثقافة لفهم أسماء الكتب والمؤلفين حتى بلا كلمة "كتاب/رواية".\n\nيجب أن تكون إجابتك فقط كائن JSON صالحاً بلا أي مقدمات، بالشكل: {"intent":"...","target":"..."}.\n\nالخدمات:\n1) "book_request" — يطلب/يذكر كتاباً أو رواية أو مؤلفاً حقيقياً (حتى بضمير يعود لعنصر ذُكر في المحادثة). target = اسم الكتاب أو المؤلف الفعلي (استنتجه من السياق إذا لزم، بدون كلمات مثل: اريد/ابغى/عندك/هات/ابعتلي/ممكن).\n2) "image_request" — يطلب صوراً حقيقية من الإنترنت لشيء/شخص/مكان. target = وصف الصورة أو الاسم (استنتجه من السياق إذا استعمل ضميراً).\n3) "temp_mail" — يريد بريداً إلكترونياً مؤقتاً/وهمياً/disposable/temp mail. target = null.\n4) "scan_link" — أرسل رابطاً أو طلب فحص رابط. target = الرابط.\n5) "general_chat" — أي كلام عام أو تحية أو سؤال معرفي/ديني/علمي/شخصي أو طلب توليد صورة بالذكاء الاصطناعي (ارسم/تخيّل/imagine) أو نقاش أو شكر. target = الرد المناسب مباشرة بلغة عربية طبيعية.\n\nخدمات إضافية داخلية:\n6) "image_more" — طلب المزيد من نفس بحث الصور السابق (فقط إذا has_active_image_session=true). target = "".\n7) "manga" — يطلب مانغا/مانهوا/كوميك. target = اسم العمل.\n8) "map" — يطلب موقعاً/خريطة لمكان جغرافي. target = اسم المكان.\n\nقواعد:\n- استعمل سياق المحادثة أدناه لفك الضمائر والإشارات قبل التصنيف.\n- "ما رأيك في رواية X" أو "لخّص لي X" = general_chat (نقاش، ليس جلب). ضع target كرد نصي.\n- "نعم/أيوه/أوك/كمان/زيد" = تابع النية السابقة من السياق (book_request إذا اقترح البوت كتاباً، image_more إذا سأل عن صور أخرى، وإلا general_chat).\n- عند الشك في كلمة عامية قصيرة غامضة → general_chat.\n- لا تخترع روابط ولا أسماء.\n\nhas_active_image_session: ' +
               (hasActiveImageSession ? "true" : "false") +
               "\nlast_bot_message: " +
               JSON.stringify(lastBot.slice(0, 200)),
           },
+          ...chatHistory.map((m) => ({ role: m.role, content: m.content })),
           { role: "user", content: text.slice(0, 400) },
         ],
       }),
