@@ -2291,8 +2291,15 @@ async function handleEvent(ev: any, pageId: string | null) {
       const ctx = await buildVideoShareContextFromItems(videoShareItems);
       if (ctx) {
         videoShareLog = "🎬 " + videoShareUrls.join(" , ");
-        const userQuestion = text?.trim() || "صِف لي هذا الفيديو/الرابط الذي أشاركه معك وأجب عن أي سؤال قد يكون واضحاً من السياق.";
+        const userQuestion = text?.trim() || "صِف لي هذا الذي أشاركه معك (صورة/فيديو/منشور) وأجب عن أي سؤال قد يكون واضحاً من السياق. إن رأيت صورة معاينة، حلّل محتواها البصري بدقّة.";
         text = `${userQuestion}\n\n${ctx}`;
+      }
+      // Feed any scraped preview image (OG:image / thumbnail) into the vision
+      // model so the bot actually "sees" the shared photo/post, not just its URL.
+      for (const it of videoShareItems) {
+        if (it.image && /^https?:\/\//i.test(it.image) && !imageUrls.includes(it.image)) {
+          imageUrls.push(it.image);
+        }
       }
     } catch (e) {
       console.error("[messenger] video_share failed", e);
