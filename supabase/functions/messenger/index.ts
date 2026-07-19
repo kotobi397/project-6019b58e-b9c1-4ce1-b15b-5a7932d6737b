@@ -2613,18 +2613,9 @@ async function handleEvent(ev: any, pageId: string | null) {
     }
   }
 
-  // === URL scanning fast-path — powered by VirusTotal ===
-  // إذا احتوت الرسالة على رابط، نفحصه ونرجع النتيجة قبل استدعاء الـ LLM.
-  if (text) {
-    try {
-      const { maybeScanUrls } = await import("./virustotal.ts");
-      const send = (t: string) => sendAndLog(admin, senderId, t, pageId, userMsgStart, mid ?? null);
-      const handled = await maybeScanUrls(admin, text, send);
-      if (handled) return;
-    } catch (e) {
-      console.error("[messenger] virustotal fast-path failed", e);
-    }
-  }
+  // (تمت إزالة ميزة فحص الروابط عبر VirusTotal بناءً على طلب المستخدم)
+
+
 
   // === Temp email (disposable inbox) fast-path — powered by mail.tm ===
   if (text) {
