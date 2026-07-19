@@ -1,0 +1,1 @@
+DELETE FROM public.user_memory WHERE key IN ('voice_sample_path','mistral_voice_id');

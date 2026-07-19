@@ -9,38 +9,189 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedPhoneLookupRouteImport } from './routes/_authenticated/phone-lookup'
+import { Route as AuthenticatedPersonasRouteImport } from './routes/_authenticated/personas'
+import { Route as AuthenticatedDripsRouteImport } from './routes/_authenticated/drips'
+import { Route as AuthenticatedCommentsRouteImport } from './routes/_authenticated/comments'
+import { Route as AuthenticatedBroadcastsRouteImport } from './routes/_authenticated/broadcasts'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as ApiPublicPhoneLookupRouteImport } from './routes/api/public/phone-lookup'
+import { Route as ApiPublicMessengerRouteImport } from './routes/api/public/messenger'
+import { Route as ApiPublicFbCommentsRouteImport } from './routes/api/public/fb-comments'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedPhoneLookupRoute =
+  AuthenticatedPhoneLookupRouteImport.update({
+    id: '/phone-lookup',
+    path: '/phone-lookup',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPersonasRoute = AuthenticatedPersonasRouteImport.update({
+  id: '/personas',
+  path: '/personas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDripsRoute = AuthenticatedDripsRouteImport.update({
+  id: '/drips',
+  path: '/drips',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCommentsRoute = AuthenticatedCommentsRouteImport.update({
+  id: '/comments',
+  path: '/comments',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBroadcastsRoute = AuthenticatedBroadcastsRouteImport.update({
+  id: '/broadcasts',
+  path: '/broadcasts',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiPublicPhoneLookupRoute = ApiPublicPhoneLookupRouteImport.update({
+  id: '/api/public/phone-lookup',
+  path: '/api/public/phone-lookup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicMessengerRoute = ApiPublicMessengerRouteImport.update({
+  id: '/api/public/messenger',
+  path: '/api/public/messenger',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicFbCommentsRoute = ApiPublicFbCommentsRouteImport.update({
+  id: '/api/public/fb-comments',
+  path: '/api/public/fb-comments',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/broadcasts': typeof AuthenticatedBroadcastsRoute
+  '/comments': typeof AuthenticatedCommentsRoute
+  '/drips': typeof AuthenticatedDripsRoute
+  '/personas': typeof AuthenticatedPersonasRoute
+  '/phone-lookup': typeof AuthenticatedPhoneLookupRoute
+  '/api/public/fb-comments': typeof ApiPublicFbCommentsRoute
+  '/api/public/messenger': typeof ApiPublicMessengerRoute
+  '/api/public/phone-lookup': typeof ApiPublicPhoneLookupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/broadcasts': typeof AuthenticatedBroadcastsRoute
+  '/comments': typeof AuthenticatedCommentsRoute
+  '/drips': typeof AuthenticatedDripsRoute
+  '/personas': typeof AuthenticatedPersonasRoute
+  '/phone-lookup': typeof AuthenticatedPhoneLookupRoute
+  '/api/public/fb-comments': typeof ApiPublicFbCommentsRoute
+  '/api/public/messenger': typeof ApiPublicMessengerRoute
+  '/api/public/phone-lookup': typeof ApiPublicPhoneLookupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/broadcasts': typeof AuthenticatedBroadcastsRoute
+  '/_authenticated/comments': typeof AuthenticatedCommentsRoute
+  '/_authenticated/drips': typeof AuthenticatedDripsRoute
+  '/_authenticated/personas': typeof AuthenticatedPersonasRoute
+  '/_authenticated/phone-lookup': typeof AuthenticatedPhoneLookupRoute
+  '/api/public/fb-comments': typeof ApiPublicFbCommentsRoute
+  '/api/public/messenger': typeof ApiPublicMessengerRoute
+  '/api/public/phone-lookup': typeof ApiPublicPhoneLookupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/broadcasts'
+    | '/comments'
+    | '/drips'
+    | '/personas'
+    | '/phone-lookup'
+    | '/api/public/fb-comments'
+    | '/api/public/messenger'
+    | '/api/public/phone-lookup'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/admin'
+    | '/broadcasts'
+    | '/comments'
+    | '/drips'
+    | '/personas'
+    | '/phone-lookup'
+    | '/api/public/fb-comments'
+    | '/api/public/messenger'
+    | '/api/public/phone-lookup'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/admin'
+    | '/_authenticated/broadcasts'
+    | '/_authenticated/comments'
+    | '/_authenticated/drips'
+    | '/_authenticated/personas'
+    | '/_authenticated/phone-lookup'
+    | '/api/public/fb-comments'
+    | '/api/public/messenger'
+    | '/api/public/phone-lookup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  ApiPublicFbCommentsRoute: typeof ApiPublicFbCommentsRoute
+  ApiPublicMessengerRoute: typeof ApiPublicMessengerRoute
+  ApiPublicPhoneLookupRoute: typeof ApiPublicPhoneLookupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +199,101 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/phone-lookup': {
+      id: '/_authenticated/phone-lookup'
+      path: '/phone-lookup'
+      fullPath: '/phone-lookup'
+      preLoaderRoute: typeof AuthenticatedPhoneLookupRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/personas': {
+      id: '/_authenticated/personas'
+      path: '/personas'
+      fullPath: '/personas'
+      preLoaderRoute: typeof AuthenticatedPersonasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/drips': {
+      id: '/_authenticated/drips'
+      path: '/drips'
+      fullPath: '/drips'
+      preLoaderRoute: typeof AuthenticatedDripsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/comments': {
+      id: '/_authenticated/comments'
+      path: '/comments'
+      fullPath: '/comments'
+      preLoaderRoute: typeof AuthenticatedCommentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/broadcasts': {
+      id: '/_authenticated/broadcasts'
+      path: '/broadcasts'
+      fullPath: '/broadcasts'
+      preLoaderRoute: typeof AuthenticatedBroadcastsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/phone-lookup': {
+      id: '/api/public/phone-lookup'
+      path: '/api/public/phone-lookup'
+      fullPath: '/api/public/phone-lookup'
+      preLoaderRoute: typeof ApiPublicPhoneLookupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/messenger': {
+      id: '/api/public/messenger'
+      path: '/api/public/messenger'
+      fullPath: '/api/public/messenger'
+      preLoaderRoute: typeof ApiPublicMessengerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/fb-comments': {
+      id: '/api/public/fb-comments'
+      path: '/api/public/fb-comments'
+      fullPath: '/api/public/fb-comments'
+      preLoaderRoute: typeof ApiPublicFbCommentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedBroadcastsRoute: typeof AuthenticatedBroadcastsRoute
+  AuthenticatedCommentsRoute: typeof AuthenticatedCommentsRoute
+  AuthenticatedDripsRoute: typeof AuthenticatedDripsRoute
+  AuthenticatedPersonasRoute: typeof AuthenticatedPersonasRoute
+  AuthenticatedPhoneLookupRoute: typeof AuthenticatedPhoneLookupRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedBroadcastsRoute: AuthenticatedBroadcastsRoute,
+  AuthenticatedCommentsRoute: AuthenticatedCommentsRoute,
+  AuthenticatedDripsRoute: AuthenticatedDripsRoute,
+  AuthenticatedPersonasRoute: AuthenticatedPersonasRoute,
+  AuthenticatedPhoneLookupRoute: AuthenticatedPhoneLookupRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  ApiPublicFbCommentsRoute: ApiPublicFbCommentsRoute,
+  ApiPublicMessengerRoute: ApiPublicMessengerRoute,
+  ApiPublicPhoneLookupRoute: ApiPublicPhoneLookupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

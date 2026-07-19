@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -77,21 +78,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "SolveBot GPT — لوحة تحكم روبوت ماسنجر" },
+      { name: "description", content: "روبوت ذكاء اصطناعي بتقنية Mistral AI للرد التلقائي على رسائل فيسبوك ماسنجر مع لوحة تحكم متقدمة وإحصائيات مباشرة." },
+      { name: "author", content: "SolveBot GPT" },
+      { property: "og:title", content: "SolveBot GPT — لوحة تحكم روبوت ماسنجر" },
+      { property: "og:description", content: "روبوت ذكاء اصطناعي بتقنية Mistral AI للرد التلقائي على رسائل فيسبوك ماسنجر." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "SolveBot GPT" },
+      { name: "twitter:description", content: "روبوت ذكاء اصطناعي للرد التلقائي على ماسنجر." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4ea5d69a-36ac-4929-ba86-69c7b7859c4b/id-preview-8871cc67--74068eec-3b29-4d23-8ea9-14601c5dbbd1.lovable.app-1782253771976.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4ea5d69a-36ac-4929-ba86-69c7b7859c4b/id-preview-8871cc67--74068eec-3b29-4d23-8ea9-14601c5dbbd1.lovable.app-1782253771976.png" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
   shellComponent: RootShell,
@@ -116,11 +119,26 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    let unsub: (() => void) | undefined;
+    import("@/integrations/supabase/client").then(({ supabase }) => {
+      const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+        if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+        router.invalidate();
+        if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      });
+      unsub = () => sub.subscription.unsubscribe();
+    });
+    return () => { unsub?.(); };
+  }, [router, queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
 }
