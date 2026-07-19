@@ -2717,7 +2717,7 @@ async function handleEvent(ev: any, pageId: string | null) {
         await handleImageSearch(admin, senderId, sess!.query, pageId, userMsgStart, sess!.offset_count ?? 0);
         return;
       }
-      if (cls.intent === "image_search" && cls.query && cls.query.length >= 2) {
+      if (cls.intent === "image_request" && cls.query && cls.query.length >= 2) {
         await handleImageSearch(admin, senderId, cls.query, pageId, userMsgStart, 0);
         return;
       }
@@ -2725,7 +2725,7 @@ async function handleEvent(ev: any, pageId: string | null) {
         await handleMangaSearch(admin, senderId, cls.query, pageId, userMsgStart);
         return;
       }
-      if (cls.intent === "book" && cls.query && cls.query.length >= 2) {
+      if (cls.intent === "book_request" && cls.query && cls.query.length >= 2) {
         const intent = await inferBookSearchIntent(text, cls.query, "any");
         await handleBookSearch(admin, senderId, intent.query, pageId, userMsgStart, intent.mode, intent.variants);
         return;
@@ -2734,9 +2734,12 @@ async function handleEvent(ev: any, pageId: string | null) {
         await handleMapSearch(admin, senderId, cls.query, pageId, userMsgStart, false);
         return;
       }
-      // satellite intent removed — treat as chat.
-
-      // "chat" (or any low-confidence result) → fall through to main LLM.
+      if (cls.intent === "temp_mail") {
+        const send = (t: string) => sendAndLog(admin, senderId, t, pageId, userMsgStart, mid ?? null);
+        await handleTempEmailIntent(admin, senderId, "create", send);
+        return;
+      }
+      // scan_link and general_chat → fall through to main LLM.
     }
   }
 
