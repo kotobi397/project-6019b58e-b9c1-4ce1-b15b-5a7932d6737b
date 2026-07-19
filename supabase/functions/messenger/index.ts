@@ -2718,7 +2718,7 @@ async function handleEvent(ev: any, pageId: string | null) {
 
 
 
-    const cls = await classifyUnifiedIntent(text, lastBot, hasActive);
+    const cls = await classifyUnifiedIntent(text, lastBot, hasActive, recentHistory);
     if (cls) {
       if (cls.intent === "image_more" && hasActive) {
         await handleImageSearch(admin, senderId, sess!.query, pageId, userMsgStart, sess!.offset_count ?? 0);
