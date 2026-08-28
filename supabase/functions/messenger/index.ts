@@ -8,9 +8,13 @@ import { isTempEmailIntent, handleTempEmailIntent, pollAllActive, createTempEmai
 const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
 const FB_API = "https://graph.facebook.com/v19.0/me/messages";
 // Mistral Large 3: official model id from Mistral docs, multimodal + function calling.
-const TEXT_MODEL = "mistral-medium-3-5";
-// Pixtral Large — أقوى نموذج رؤية من Mistral (124B) لتحليل الصور بأعلى دقة.
-const VISION_MODEL = "mistral-medium-latest";
+// ⚡ كل ردود الدردشة أصبحت عبر Hugging Face (الخطة المجانية) — router متوافق مع OpenAI.
+const HF_URL = "https://router.huggingface.co/v1/chat/completions";
+const TEXT_MODEL = "meta-llama/Llama-3.3-70B-Instruct";
+// نموذج الرؤية عبر Hugging Face لتحليل الصور.
+const VISION_MODEL = "Qwen/Qwen2.5-VL-72B-Instruct";
+// Mistral يبقى فقط للوكلاء/الصوت/توليد الصور (ليس للردود النصية).
+const MISTRAL_AGENT_MODEL = "mistral-medium-latest";
 const HISTORY_LIMIT = 60; // last 60 messages always sent
 const MISTRAL_AGENT_URL = "https://api.mistral.ai/v1/agents";
 const MISTRAL_CONVERSATIONS_URL = "https://api.mistral.ai/v1/conversations";
@@ -446,6 +450,61 @@ async function getMistralKey(): Promise<string | null> {
   _mistralRotationIndex = (_mistralRotationIndex + 1) >>> 0;
   return key;
 }
+// ---------------------------------------------------------------------------
+// Hugging Face (الخطة المجانية) — كل ردود الدردشة تمر من هنا.
+function getHfKey(): string | null {
+  const k = Deno.env.get("HUGGINGFACE_API_KEY") ?? Deno.env.get("HF_TOKEN");
+  return k && k.trim() ? k.trim() : null;
+}
+
+function normalizeHfBody(raw: any): any {
+  const body = { ...raw };
+  const model = String(body.model ?? "");
+  if (!model || /^(mistral|pixtral|open-mistral|magistral)/i.test(model)) {
+    body.model = TEXT_MODEL;
+  }
+  if (Array.isArray(body.messages)) {
+    let hasImage = false;
+    body.messages = body.messages.map((m: any) => {
+      if (!m || !Array.isArray(m.content)) return m;
+      const content = m.content.map((part: any) => {
+        if (part?.type === "image_url") {
+          hasImage = true;
+          const url = typeof part.image_url === "string" ? part.image_url : part.image_url?.url;
+          return { type: "image_url", image_url: { url } };
+        }
+        return part;
+      });
+      return { ...m, content };
+    });
+    if (hasImage) body.model = VISION_MODEL;
+  }
+  return body;
+}
+
+// Drop-in replacement for `fetch(MISTRAL_URL, { ... })` — same call shape, HF backend.
+async function hfChatFetch(init: any): Promise<Response> {
+  const key = getHfKey();
+  if (!key) {
+    console.error("[messenger] HUGGINGFACE_API_KEY missing");
+    return new Response(JSON.stringify({ error: "missing_hf_key" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+  }
+  let body: any = {};
+  try {
+    body = typeof init?.body === "string" ? JSON.parse(init.body) : (init?.body ?? {});
+  } catch { body = {}; }
+  return await fetch(HF_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(normalizeHfBody(body)),
+    signal: init?.signal,
+  });
+}
+// ---------------------------------------------------------------------------
+
 // Call after Mistral returns 401/403 for a given key so rotation stops handing it out.
 function markMistralKeyBad(key: string | null) {
   if (key) _mistralBadKeys.add(key);
@@ -477,7 +536,7 @@ async function moderateMessage(text: string): Promise<{ reason: string } | null>
   if (clean.length < 2) return null; // too short to judge — avoid false positives
 
   try {
-    const res = await fetch(MISTRAL_URL, {
+    const res = await hfChatFetch({
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
@@ -1204,7 +1263,7 @@ async function translateText(text: string, target: string): Promise<string> {
   const key = await getMistralKey();
   if (!key) return JSON.stringify({ ok: false, error: "no_translator" });
   try {
-    const res = await fetch(MISTRAL_URL, {
+    const res = await hfChatFetch({
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1648,7 +1707,7 @@ async function ensureImageAgent(key: string): Promise<string | null> {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: TEXT_MODEL,
+        model: MISTRAL_AGENT_MODEL,
         name: "SolveBot GPT Image Agent (SFW)",
         description: "Generates safe-for-work images on demand.",
         instructions: [
@@ -1717,7 +1776,7 @@ async function llmIsUnsafeImagePrompt(text: string): Promise<boolean> {
   const key = await getMistralKey();
   if (!key || !text.trim()) return false;
   try {
-    const res = await fetch(MISTRAL_URL, {
+    const res = await hfChatFetch({
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -3115,7 +3174,7 @@ async function runWithTools(messages: any[], model: string, senderId: string, ad
     // Retry up to (number of available keys) times if we hit 401/403.
     const totalKeys = (await getMistralKeys()).length || 1;
     for (let attempt = 0; attempt < totalKeys; attempt++) {
-      res = await fetch(MISTRAL_URL, {
+      res = await hfChatFetch({
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({ model, messages: convo, tools, tool_choice: "auto", max_tokens: 1500 }),
@@ -3440,7 +3499,7 @@ async function ensureWebSearchAgent(key: string): Promise<string | null> {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: TEXT_MODEL,
+        model: MISTRAL_AGENT_MODEL,
         name: "SolveBot GPT Deep Web Search",
         description: "Deep, accurate real-time web research agent for current information, news, sports, prices, and fact checking.",
         instructions:
@@ -3470,7 +3529,7 @@ async function ensureBasicWebSearchAgent(key: string): Promise<string | null> {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: TEXT_MODEL,
+        model: MISTRAL_AGENT_MODEL,
         name: "SolveBot GPT Web Search",
         description: "Accurate real-time web research agent.",
         instructions:
@@ -3659,7 +3718,7 @@ async function classifyBookIntentSmart(
   const key = await getMistralKey();
   if (!key) return null;
   try {
-    const res = await fetch(MISTRAL_URL, {
+    const res = await hfChatFetch({
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
@@ -3704,7 +3763,7 @@ async function classifyImageIntent(
   const key = await getMistralKey();
   if (!key) return null;
   try {
-    const res = await fetch(MISTRAL_URL, {
+    const res = await hfChatFetch({
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
@@ -3750,7 +3809,7 @@ async function _inferBookSearchIntent(
   if (!key) return fallback;
 
   try {
-    const res = await fetch(MISTRAL_URL, {
+    const res = await hfChatFetch({
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
@@ -4904,7 +4963,7 @@ async function classifyMangaIntentSmart(
   const key = await getMistralKey();
   if (!key) return null;
   try {
-    const res = await fetch(MISTRAL_URL, {
+    const res = await hfChatFetch({
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
@@ -4966,7 +5025,7 @@ async function classifyUnifiedIntent(
   const key = await getMistralKey();
   if (!key) return null;
   try {
-    const res = await fetch(MISTRAL_URL, {
+    const res = await hfChatFetch({
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({

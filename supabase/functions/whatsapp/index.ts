@@ -3,8 +3,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
-const TEXT_MODEL = "mistral-small-2603";
+const HF_URL = "https://router.huggingface.co/v1/chat/completions";
+const TEXT_MODEL = "meta-llama/Llama-3.3-70B-Instruct";
 const HISTORY_LIMIT = 40;
 
 const AI_ASSISTANT_SYSTEM_PROMPT = `أنت SolveBot GPT — مساعد ذكاء اصطناعي متقدم على غرار ChatGPT.
@@ -29,19 +29,9 @@ function getAdmin() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-async function getMistralKey(admin: any): Promise<string | null> {
-  try {
-    const { data } = await admin.from("app_config")
-      .select("mistral_api_key, mistral_api_keys").limit(1).maybeSingle();
-    const list = (data as any)?.mistral_api_keys;
-    if (Array.isArray(list) && list.length > 0) {
-      const usable = list.filter((k: any) => typeof k === "string" && k.trim());
-      if (usable.length) return usable[Math.floor(Math.random() * usable.length)].trim();
-    }
-    const single = (data as any)?.mistral_api_key;
-    if (typeof single === "string" && single.trim()) return single.trim();
-  } catch (_e) { /* fall through */ }
-  return Deno.env.get("MISTRAL_API_KEY") ?? null;
+async function getMistralKey(_admin: any): Promise<string | null> {
+  const k = Deno.env.get("HUGGINGFACE_API_KEY") ?? Deno.env.get("HF_TOKEN");
+  return k && k.trim() ? k.trim() : null;
 }
 
 async function pickPersona(admin: any, fallback: string): Promise<string> {
@@ -82,7 +72,7 @@ async function callMistral(key: string, system: string, history: any[], userText
     ...history,
     { role: "user", content: userText },
   ];
-  const res = await fetch(MISTRAL_URL, {
+  const res = await fetch(HF_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({ model: TEXT_MODEL, temperature: 0.7, max_tokens: 1024, messages }),
