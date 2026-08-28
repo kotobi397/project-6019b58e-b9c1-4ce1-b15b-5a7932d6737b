@@ -8,9 +8,13 @@ import { isTempEmailIntent, handleTempEmailIntent, pollAllActive, createTempEmai
 const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
 const FB_API = "https://graph.facebook.com/v19.0/me/messages";
 // Mistral Large 3: official model id from Mistral docs, multimodal + function calling.
-const TEXT_MODEL = "mistral-medium-3-5";
-// Pixtral Large — أقوى نموذج رؤية من Mistral (124B) لتحليل الصور بأعلى دقة.
-const VISION_MODEL = "mistral-medium-latest";
+// ⚡ كل ردود الدردشة أصبحت عبر Hugging Face (الخطة المجانية) — router متوافق مع OpenAI.
+const HF_URL = "https://router.huggingface.co/v1/chat/completions";
+const TEXT_MODEL = "meta-llama/Llama-3.3-70B-Instruct";
+// نموذج الرؤية عبر Hugging Face لتحليل الصور.
+const VISION_MODEL = "Qwen/Qwen2.5-VL-72B-Instruct";
+// Mistral يبقى فقط للوكلاء/الصوت/توليد الصور (ليس للردود النصية).
+const MISTRAL_AGENT_MODEL = "mistral-medium-latest";
 const HISTORY_LIMIT = 60; // last 60 messages always sent
 const MISTRAL_AGENT_URL = "https://api.mistral.ai/v1/agents";
 const MISTRAL_CONVERSATIONS_URL = "https://api.mistral.ai/v1/conversations";
