@@ -3174,7 +3174,7 @@ async function runWithTools(messages: any[], model: string, senderId: string, ad
     // Retry up to (number of available keys) times if we hit 401/403.
     const totalKeys = (await getMistralKeys()).length || 1;
     for (let attempt = 0; attempt < totalKeys; attempt++) {
-      res = await fetch(MISTRAL_URL, {
+      res = await hfChatFetch({
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
         body: JSON.stringify({ model, messages: convo, tools, tool_choice: "auto", max_tokens: 1500 }),
