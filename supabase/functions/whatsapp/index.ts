@@ -29,19 +29,9 @@ function getAdmin() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-async function getMistralKey(admin: any): Promise<string | null> {
-  try {
-    const { data } = await admin.from("app_config")
-      .select("mistral_api_key, mistral_api_keys").limit(1).maybeSingle();
-    const list = (data as any)?.mistral_api_keys;
-    if (Array.isArray(list) && list.length > 0) {
-      const usable = list.filter((k: any) => typeof k === "string" && k.trim());
-      if (usable.length) return usable[Math.floor(Math.random() * usable.length)].trim();
-    }
-    const single = (data as any)?.mistral_api_key;
-    if (typeof single === "string" && single.trim()) return single.trim();
-  } catch (_e) { /* fall through */ }
-  return Deno.env.get("MISTRAL_API_KEY") ?? null;
+async function getMistralKey(_admin: any): Promise<string | null> {
+  const k = Deno.env.get("HUGGINGFACE_API_KEY") ?? Deno.env.get("HF_TOKEN");
+  return k && k.trim() ? k.trim() : null;
 }
 
 async function pickPersona(admin: any, fallback: string): Promise<string> {
