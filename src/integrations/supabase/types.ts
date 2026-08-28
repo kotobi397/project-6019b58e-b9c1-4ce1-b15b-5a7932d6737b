@@ -16,23 +16,74 @@ export type Database = {
     Tables: {
       app_config: {
         Row: {
+          auto_generator_batch_size: number
+          auto_generator_delay_ms: number
+          auto_generator_enabled: boolean
+          auto_generator_last_run: string | null
+          cerebras_api_key: string | null
+          cerebras_api_keys: Json | null
+          custom_model_id: string | null
+          groq_api_key: string | null
+          groq_api_keys: Json
           id: string
+          last_fine_tune_at: string | null
+          last_fine_tune_file_id: string | null
+          last_fine_tune_job_id: string | null
           mistral_api_key: string | null
           mistral_api_keys: Json
+          openrouter_api_key: string | null
+          openrouter_api_keys: Json | null
+          prefer_custom_model: boolean
+          text_provider: string
+          training_min_pairs: number
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          auto_generator_batch_size?: number
+          auto_generator_delay_ms?: number
+          auto_generator_enabled?: boolean
+          auto_generator_last_run?: string | null
+          cerebras_api_key?: string | null
+          cerebras_api_keys?: Json | null
+          custom_model_id?: string | null
+          groq_api_key?: string | null
+          groq_api_keys?: Json
           id?: string
+          last_fine_tune_at?: string | null
+          last_fine_tune_file_id?: string | null
+          last_fine_tune_job_id?: string | null
           mistral_api_key?: string | null
           mistral_api_keys?: Json
+          openrouter_api_key?: string | null
+          openrouter_api_keys?: Json | null
+          prefer_custom_model?: boolean
+          text_provider?: string
+          training_min_pairs?: number
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          auto_generator_batch_size?: number
+          auto_generator_delay_ms?: number
+          auto_generator_enabled?: boolean
+          auto_generator_last_run?: string | null
+          cerebras_api_key?: string | null
+          cerebras_api_keys?: Json | null
+          custom_model_id?: string | null
+          groq_api_key?: string | null
+          groq_api_keys?: Json
           id?: string
+          last_fine_tune_at?: string | null
+          last_fine_tune_file_id?: string | null
+          last_fine_tune_job_id?: string | null
           mistral_api_key?: string | null
           mistral_api_keys?: Json
+          openrouter_api_key?: string | null
+          openrouter_api_keys?: Json | null
+          prefer_custom_model?: boolean
+          text_provider?: string
+          training_min_pairs?: number
           updated_at?: string
           updated_by?: string | null
         }
@@ -149,6 +200,45 @@ export type Database = {
           system_prompt?: string
           tone?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      brainbot_api_keys: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          updated_at: string
+          usage_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          updated_at?: string
+          usage_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          updated_at?: string
+          usage_count?: number
         }
         Relationships: []
       }
@@ -405,6 +495,42 @@ export type Database = {
         Update: {
           id?: number
           ts?: string
+        }
+        Relationships: []
+      }
+      fine_tuning_logs: {
+        Row: {
+          bot_response: string
+          created_at: string
+          exported: boolean
+          exported_at: string | null
+          id: string
+          lang: string | null
+          quality_approved: boolean
+          source: string
+          user_input: string
+        }
+        Insert: {
+          bot_response: string
+          created_at?: string
+          exported?: boolean
+          exported_at?: string | null
+          id?: string
+          lang?: string | null
+          quality_approved?: boolean
+          source?: string
+          user_input: string
+        }
+        Update: {
+          bot_response?: string
+          created_at?: string
+          exported?: boolean
+          exported_at?: string | null
+          id?: string
+          lang?: string | null
+          quality_approved?: boolean
+          source?: string
+          user_input?: string
         }
         Relationships: []
       }
@@ -765,16 +891,28 @@ export type Database = {
       }
       processed_messages: {
         Row: {
+          attempts: number
+          completed_at: string | null
+          last_error: string | null
           mid: string
           processed_at: string
+          status: string
         }
         Insert: {
+          attempts?: number
+          completed_at?: string | null
+          last_error?: string | null
           mid: string
           processed_at?: string
+          status?: string
         }
         Update: {
+          attempts?: number
+          completed_at?: string | null
+          last_error?: string | null
           mid?: string
           processed_at?: string
+          status?: string
         }
         Relationships: []
       }
@@ -1012,11 +1150,60 @@ export type Database = {
         }
         Relationships: []
       }
+      wattpad_search_cache: {
+        Row: {
+          created_at: string
+          facebook_user_id: string
+          results: Json
+        }
+        Insert: {
+          created_at?: string
+          facebook_user_id: string
+          results?: Json
+        }
+        Update: {
+          created_at?: string
+          facebook_user_id?: string
+          results?: Json
+        }
+        Relationships: []
+      }
+      wattpad_sessions: {
+        Row: {
+          author: string | null
+          current_part: number
+          facebook_user_id: string
+          parts: Json
+          story_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author?: string | null
+          current_part?: number
+          facebook_user_id: string
+          parts?: Json
+          story_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author?: string | null
+          current_part?: number
+          facebook_user_id?: string
+          parts?: Json
+          story_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      brainbot_readiness: { Args: never; Returns: Json }
       fb_rate_reserve: {
         Args: { _max: number; _window_ms?: number }
         Returns: boolean
