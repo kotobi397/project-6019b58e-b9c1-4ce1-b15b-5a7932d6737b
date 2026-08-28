@@ -3499,7 +3499,7 @@ async function ensureWebSearchAgent(key: string): Promise<string | null> {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: TEXT_MODEL,
+        model: MISTRAL_AGENT_MODEL,
         name: "SolveBot GPT Deep Web Search",
         description: "Deep, accurate real-time web research agent for current information, news, sports, prices, and fact checking.",
         instructions:
