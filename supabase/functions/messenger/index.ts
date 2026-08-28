@@ -1263,7 +1263,7 @@ async function translateText(text: string, target: string): Promise<string> {
   const key = await getMistralKey();
   if (!key) return JSON.stringify({ ok: false, error: "no_translator" });
   try {
-    const res = await fetch(MISTRAL_URL, {
+    const res = await hfChatFetch({
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
