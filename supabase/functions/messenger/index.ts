@@ -1776,7 +1776,7 @@ async function llmIsUnsafeImagePrompt(text: string): Promise<boolean> {
   const key = await getMistralKey();
   if (!key || !text.trim()) return false;
   try {
-    const res = await fetch(MISTRAL_URL, {
+    const res = await hfChatFetch({
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
