@@ -450,6 +450,61 @@ async function getMistralKey(): Promise<string | null> {
   _mistralRotationIndex = (_mistralRotationIndex + 1) >>> 0;
   return key;
 }
+// ---------------------------------------------------------------------------
+// Hugging Face (الخطة المجانية) — كل ردود الدردشة تمر من هنا.
+function getHfKey(): string | null {
+  const k = Deno.env.get("HUGGINGFACE_API_KEY") ?? Deno.env.get("HF_TOKEN");
+  return k && k.trim() ? k.trim() : null;
+}
+
+function normalizeHfBody(raw: any): any {
+  const body = { ...raw };
+  const model = String(body.model ?? "");
+  if (!model || /^(mistral|pixtral|open-mistral|magistral)/i.test(model)) {
+    body.model = TEXT_MODEL;
+  }
+  if (Array.isArray(body.messages)) {
+    let hasImage = false;
+    body.messages = body.messages.map((m: any) => {
+      if (!m || !Array.isArray(m.content)) return m;
+      const content = m.content.map((part: any) => {
+        if (part?.type === "image_url") {
+          hasImage = true;
+          const url = typeof part.image_url === "string" ? part.image_url : part.image_url?.url;
+          return { type: "image_url", image_url: { url } };
+        }
+        return part;
+      });
+      return { ...m, content };
+    });
+    if (hasImage) body.model = VISION_MODEL;
+  }
+  return body;
+}
+
+// Drop-in replacement for `fetch(MISTRAL_URL, { ... })` — same call shape, HF backend.
+async function hfChatFetch(init: any): Promise<Response> {
+  const key = getHfKey();
+  if (!key) {
+    console.error("[messenger] HUGGINGFACE_API_KEY missing");
+    return new Response(JSON.stringify({ error: "missing_hf_key" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+  }
+  let body: any = {};
+  try {
+    body = typeof init?.body === "string" ? JSON.parse(init.body) : (init?.body ?? {});
+  } catch { body = {}; }
+  return await fetch(HF_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify(normalizeHfBody(body)),
+    signal: init?.signal,
+  });
+}
+// ---------------------------------------------------------------------------
+
 // Call after Mistral returns 401/403 for a given key so rotation stops handing it out.
 function markMistralKeyBad(key: string | null) {
   if (key) _mistralBadKeys.add(key);
