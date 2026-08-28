@@ -72,7 +72,7 @@ async function callMistral(key: string, system: string, history: any[], userText
     ...history,
     { role: "user", content: userText },
   ];
-  const res = await fetch(MISTRAL_URL, {
+  const res = await fetch(HF_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({ model: TEXT_MODEL, temperature: 0.7, max_tokens: 1024, messages }),
