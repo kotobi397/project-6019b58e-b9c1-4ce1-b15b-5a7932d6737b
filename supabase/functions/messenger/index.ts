@@ -1707,7 +1707,7 @@ async function ensureImageAgent(key: string): Promise<string | null> {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: TEXT_MODEL,
+        model: MISTRAL_AGENT_MODEL,
         name: "SolveBot GPT Image Agent (SFW)",
         description: "Generates safe-for-work images on demand.",
         instructions: [
