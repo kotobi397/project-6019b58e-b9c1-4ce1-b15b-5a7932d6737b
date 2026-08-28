@@ -3,8 +3,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
-const TEXT_MODEL = "mistral-small-2603";
+const HF_URL = "https://router.huggingface.co/v1/chat/completions";
+const TEXT_MODEL = "meta-llama/Llama-3.3-70B-Instruct";
 const HISTORY_LIMIT = 40;
 
 const AI_ASSISTANT_SYSTEM_PROMPT = `أنت SolveBot GPT — مساعد ذكاء اصطناعي متقدم على غرار ChatGPT.
