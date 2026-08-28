@@ -536,7 +536,7 @@ async function moderateMessage(text: string): Promise<{ reason: string } | null>
   if (clean.length < 2) return null; // too short to judge — avoid false positives
 
   try {
-    const res = await fetch(MISTRAL_URL, {
+    const res = await hfChatFetch({
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
