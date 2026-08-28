@@ -3809,7 +3809,7 @@ async function _inferBookSearchIntent(
   if (!key) return fallback;
 
   try {
-    const res = await fetch(MISTRAL_URL, {
+    const res = await hfChatFetch({
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
