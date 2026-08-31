@@ -30,7 +30,7 @@ function getAdmin() {
 }
 
 async function getMistralKey(_admin: any): Promise<string | null> {
-  const k = Deno.env.get("HUGGINGFACE_API_KEY") ?? Deno.env.get("HF_TOKEN");
+  const k = Deno.env.get("SILICONFLOW_API_KEY") ?? Deno.env.get("HUGGINGFACE_API_KEY") ?? Deno.env.get("HF_TOKEN");
   return k && k.trim() ? k.trim() : null;
 }
 
