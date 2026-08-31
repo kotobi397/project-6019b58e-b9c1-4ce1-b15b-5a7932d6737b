@@ -451,16 +451,18 @@ async function getMistralKey(): Promise<string | null> {
   return key;
 }
 // ---------------------------------------------------------------------------
-// Hugging Face (الخطة المجانية) — كل ردود الدردشة تمر من هنا.
+// SiliconFlow — كل ردود الدردشة تمر من هنا.
 function getHfKey(): string | null {
-  const k = Deno.env.get("HUGGINGFACE_API_KEY") ?? Deno.env.get("HF_TOKEN");
+  const k = Deno.env.get("SILICONFLOW_API_KEY")
+    ?? Deno.env.get("HUGGINGFACE_API_KEY")
+    ?? Deno.env.get("HF_TOKEN");
   return k && k.trim() ? k.trim() : null;
 }
 
 function normalizeHfBody(raw: any): any {
   const body = { ...raw };
   const model = String(body.model ?? "");
-  if (!model || /^(mistral|pixtral|open-mistral|magistral)/i.test(model)) {
+  if (!model || /^(mistral|pixtral|open-mistral|magistral|meta-llama)/i.test(model) || /Qwen2\.5-VL/i.test(model)) {
     body.model = TEXT_MODEL;
   }
   if (Array.isArray(body.messages)) {
