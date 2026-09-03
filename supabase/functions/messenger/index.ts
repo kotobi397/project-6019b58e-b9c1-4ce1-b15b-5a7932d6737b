@@ -15,7 +15,7 @@ const TEXT_MODEL = "qwen/qwen3.8-27b";
 const VISION_MODEL = "qwen/qwen3.8-27b";
 // Mistral يبقى فقط للوكلاء/الصوت/توليد الصور (ليس للردود النصية).
 const MISTRAL_AGENT_MODEL = "mistral-medium-latest";
-const HISTORY_LIMIT = 60; // last 60 messages always sent
+const HISTORY_LIMIT = 14; // تقليل السياق لخفض استهلاك التوكِنات (حد Groq 8000/دقيقة)
 const MISTRAL_AGENT_URL = "https://api.mistral.ai/v1/agents";
 const MISTRAL_CONVERSATIONS_URL = "https://api.mistral.ai/v1/conversations";
 
