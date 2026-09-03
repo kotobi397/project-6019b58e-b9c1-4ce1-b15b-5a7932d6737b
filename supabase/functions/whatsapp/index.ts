@@ -3,8 +3,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const HF_URL = "https://api.siliconflow.com/v1/chat/completions";
-const TEXT_MODEL = "deepseek-ai/DeepSeek-V3.2";
+const HF_URL = "https://api.groq.com/openai/v1/chat/completions";
+const TEXT_MODEL = "qwen/qwen3.8-27b";
 const HISTORY_LIMIT = 40;
 
 const AI_ASSISTANT_SYSTEM_PROMPT = `أنت SolveBot GPT — مساعد ذكاء اصطناعي متقدم على غرار ChatGPT.
