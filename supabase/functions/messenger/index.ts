@@ -8,11 +8,11 @@ import { isTempEmailIntent, handleTempEmailIntent, pollAllActive, createTempEmai
 const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
 const FB_API = "https://graph.facebook.com/v19.0/me/messages";
 // Mistral Large 3: official model id from Mistral docs, multimodal + function calling.
-// ⚡ كل ردود الدردشة أصبحت عبر SiliconFlow — router متوافق مع OpenAI.
-const HF_URL = "https://api.siliconflow.com/v1/chat/completions";
-const TEXT_MODEL = "deepseek-ai/DeepSeek-V3.2";
-// نموذج الرؤية عبر SiliconFlow لتحليل الصور.
-const VISION_MODEL = "Qwen/Qwen3-VL-32B-Instruct";
+// ⚡ كل ردود الدردشة أصبحت عبر Groq — router متوافق مع OpenAI (خطة مجانية، نموذج خفيف وقوي).
+const HF_URL = "https://api.groq.com/openai/v1/chat/completions";
+const TEXT_MODEL = "qwen/qwen3.8-27b";
+// نفس النموذج يدعم الرؤية (multimodal) — أقل استهلاكاً من تشغيل نموذجين.
+const VISION_MODEL = "qwen/qwen3.8-27b";
 // Mistral يبقى فقط للوكلاء/الصوت/توليد الصور (ليس للردود النصية).
 const MISTRAL_AGENT_MODEL = "mistral-medium-latest";
 const HISTORY_LIMIT = 60; // last 60 messages always sent
@@ -451,9 +451,10 @@ async function getMistralKey(): Promise<string | null> {
   return key;
 }
 // ---------------------------------------------------------------------------
-// SiliconFlow — كل ردود الدردشة تمر من هنا.
+// Groq — كل ردود الدردشة تمر من هنا.
 function getHfKey(): string | null {
-  const k = Deno.env.get("SILICONFLOW_API_KEY")
+  const k = Deno.env.get("GROQ_API_KEY")
+    ?? Deno.env.get("SILICONFLOW_API_KEY")
     ?? Deno.env.get("HUGGINGFACE_API_KEY")
     ?? Deno.env.get("HF_TOKEN");
   return k && k.trim() ? k.trim() : null;
@@ -462,7 +463,8 @@ function getHfKey(): string | null {
 function normalizeHfBody(raw: any): any {
   const body = { ...raw };
   const model = String(body.model ?? "");
-  if (!model || /^(mistral|pixtral|open-mistral|magistral|meta-llama)/i.test(model) || /Qwen2\.5-VL/i.test(model)) {
+  // أي موديل غير موديلات Groq المعتمدة → حوّله للنموذج الافتراضي.
+  if (!model || !/^(qwen\/qwen3\.8-27b|openai\/gpt-oss-20b|openai\/gpt-oss-120b|groq\/compound(-mini)?)$/i.test(model)) {
     body.model = TEXT_MODEL;
   }
   if (Array.isArray(body.messages)) {
