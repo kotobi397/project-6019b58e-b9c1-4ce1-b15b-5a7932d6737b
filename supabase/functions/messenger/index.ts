@@ -8,11 +8,11 @@ import { isTempEmailIntent, handleTempEmailIntent, pollAllActive, createTempEmai
 const MISTRAL_URL = "https://api.mistral.ai/v1/chat/completions";
 const FB_API = "https://graph.facebook.com/v19.0/me/messages";
 // Mistral Large 3: official model id from Mistral docs, multimodal + function calling.
-// ⚡ كل ردود الدردشة أصبحت عبر SiliconFlow — router متوافق مع OpenAI.
-const HF_URL = "https://api.siliconflow.com/v1/chat/completions";
-const TEXT_MODEL = "deepseek-ai/DeepSeek-V3.2";
-// نموذج الرؤية عبر SiliconFlow لتحليل الصور.
-const VISION_MODEL = "Qwen/Qwen3-VL-32B-Instruct";
+// ⚡ كل ردود الدردشة أصبحت عبر Groq — router متوافق مع OpenAI (خطة مجانية، نموذج خفيف وقوي).
+const HF_URL = "https://api.groq.com/openai/v1/chat/completions";
+const TEXT_MODEL = "qwen/qwen3.8-27b";
+// نفس النموذج يدعم الرؤية (multimodal) — أقل استهلاكاً من تشغيل نموذجين.
+const VISION_MODEL = "qwen/qwen3.8-27b";
 // Mistral يبقى فقط للوكلاء/الصوت/توليد الصور (ليس للردود النصية).
 const MISTRAL_AGENT_MODEL = "mistral-medium-latest";
 const HISTORY_LIMIT = 60; // last 60 messages always sent
