@@ -15,7 +15,7 @@ const TEXT_MODEL = "qwen/qwen3.8-27b";
 const VISION_MODEL = "qwen/qwen3.8-27b";
 // Mistral يبقى فقط للوكلاء/الصوت/توليد الصور (ليس للردود النصية).
 const MISTRAL_AGENT_MODEL = "mistral-medium-latest";
-const HISTORY_LIMIT = 60; // last 60 messages always sent
+const HISTORY_LIMIT = 14; // تقليل السياق لخفض استهلاك التوكِنات (حد Groq 8000/دقيقة)
 const MISTRAL_AGENT_URL = "https://api.mistral.ai/v1/agents";
 const MISTRAL_CONVERSATIONS_URL = "https://api.mistral.ai/v1/conversations";
 
@@ -460,11 +460,20 @@ function getHfKey(): string | null {
   return k && k.trim() ? k.trim() : null;
 }
 
+// نماذج بديلة عند امتلاء حصة الدقيقة (TPM) للنموذج الأساسي — كل نموذج له حصة مستقلة.
+const TEXT_FALLBACKS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+const VISION_FALLBACKS = ["meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-4-maverick-17b-128e-instruct"];
+const ALLOWED_MODELS = new Set<string>([
+  TEXT_MODEL, VISION_MODEL,
+  ...TEXT_FALLBACKS, ...VISION_FALLBACKS,
+  "openai/gpt-oss-20b", "openai/gpt-oss-120b", "groq/compound", "groq/compound-mini",
+]);
+
 function normalizeHfBody(raw: any): any {
   const body = { ...raw };
   const model = String(body.model ?? "");
   // أي موديل غير موديلات Groq المعتمدة → حوّله للنموذج الافتراضي.
-  if (!model || !/^(qwen\/qwen3\.8-27b|openai\/gpt-oss-20b|openai\/gpt-oss-120b|groq\/compound(-mini)?)$/i.test(model)) {
+  if (!model || !ALLOWED_MODELS.has(model)) {
     body.model = TEXT_MODEL;
   }
   if (Array.isArray(body.messages)) {
@@ -481,12 +490,24 @@ function normalizeHfBody(raw: any): any {
       });
       return { ...m, content };
     });
-    if (hasImage) body.model = VISION_MODEL;
+    if (hasImage && !VISION_FALLBACKS.includes(String(body.model))) body.model = VISION_MODEL;
   }
+  // سقف افتراضي للتوكِنات حتى لا نستهلك حصة الدقيقة دفعة واحدة.
+  if (!body.max_tokens || body.max_tokens > 900) body.max_tokens = 900;
   return body;
 }
 
+function parseRetryAfterMs(res: Response, bodyText: string): number {
+  const h = Number(res.headers.get("retry-after"));
+  if (Number.isFinite(h) && h > 0) return Math.min(h * 1000, 12000);
+  const m = bodyText.match(/try again in ([\d.]+)s/i);
+  if (m) return Math.min(Math.ceil(parseFloat(m[1]!) * 1000) + 400, 12000);
+  return 2500;
+}
+
 // Drop-in replacement for `fetch(MISTRAL_URL, { ... })` — same call shape, HF backend.
+// عند 429 (تجاوز حصة الدقيقة) ننتظر المدة التي يطلبها Groq ثم نعيد المحاولة،
+// وإن استمر الرفض ننتقل تلقائياً لنموذج بديل بحصة مستقلة — فلا يرى المستخدم رسالة "النموذج مشغول".
 async function hfChatFetch(init: any): Promise<Response> {
   const key = getHfKey();
   if (!key) {
@@ -500,13 +521,38 @@ async function hfChatFetch(init: any): Promise<Response> {
   try {
     body = typeof init?.body === "string" ? JSON.parse(init.body) : (init?.body ?? {});
   } catch { body = {}; }
-  return await fetch(HF_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify(normalizeHfBody(body)),
-    signal: init?.signal,
-  });
+  const base = normalizeHfBody(body);
+  const isVision = JSON.stringify(base.messages ?? []).includes('"image_url"');
+  const chain = [base.model, ...(isVision ? VISION_FALLBACKS : TEXT_FALLBACKS)]
+    .filter((m, i, a) => m && a.indexOf(m) === i);
+
+  let last: Response | null = null;
+  for (let i = 0; i < chain.length; i++) {
+    const model = chain[i];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const res = await fetch(HF_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...base, model }),
+        signal: init?.signal,
+      });
+      if (res.status !== 429 && res.status < 500) return res;
+      const txt = await res.text();
+      last = new Response(txt, { status: res.status, headers: res.headers });
+      if (res.status === 429) {
+        const waitMs = parseRetryAfterMs(res, txt);
+        console.warn(`[messenger] 429 on ${model} — waiting ${waitMs}ms (attempt ${attempt + 1})`);
+        // ننتظر مرة واحدة فقط لكل نموذج، ثم ننتقل للبديل.
+        if (attempt === 0 && waitMs <= 6000) { await new Promise((r) => setTimeout(r, waitMs)); continue; }
+        break;
+      }
+      console.warn(`[messenger] ${res.status} on ${model} — trying next`, txt.slice(0, 200));
+      break;
+    }
+  }
+  return last ?? new Response(JSON.stringify({ error: "upstream_unavailable" }), { status: 503 });
 }
+
 // ---------------------------------------------------------------------------
 
 // Call after Mistral returns 401/403 for a given key so rotation stops handing it out.
