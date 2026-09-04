@@ -461,13 +461,15 @@ function getHfKey(): string | null {
 }
 
 // نماذج بديلة عند امتلاء حصة الدقيقة (TPM) للنموذج الأساسي — كل نموذج له حصة مستقلة.
-const TEXT_FALLBACKS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
-const VISION_FALLBACKS = ["meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-4-maverick-17b-128e-instruct"];
+// (يجب أن تكون موجودة فعلياً على Groq وإلا رجع 404 وفشل الرد)
+const TEXT_FALLBACKS = ["qwen/qwen3.6-27b", "groq/compound-mini", "groq/compound"];
+const VISION_FALLBACKS = ["qwen/qwen3.6-27b"];
 const ALLOWED_MODELS = new Set<string>([
   TEXT_MODEL, VISION_MODEL,
   ...TEXT_FALLBACKS, ...VISION_FALLBACKS,
-  "openai/gpt-oss-20b", "openai/gpt-oss-120b", "groq/compound", "groq/compound-mini",
+  "openai/gpt-oss-20b", "openai/gpt-oss-120b",
 ]);
+
 
 function normalizeHfBody(raw: any): any {
   const body = { ...raw };
