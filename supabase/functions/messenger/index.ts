@@ -461,13 +461,15 @@ function getHfKey(): string | null {
 }
 
 // نماذج بديلة عند امتلاء حصة الدقيقة (TPM) للنموذج الأساسي — كل نموذج له حصة مستقلة.
-const TEXT_FALLBACKS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
-const VISION_FALLBACKS = ["meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-4-maverick-17b-128e-instruct"];
+// (يجب أن تكون موجودة فعلياً على Groq وإلا رجع 404 وفشل الرد)
+const TEXT_FALLBACKS = ["qwen/qwen3.6-27b", "groq/compound-mini", "groq/compound"];
+const VISION_FALLBACKS = ["qwen/qwen3.6-27b"];
 const ALLOWED_MODELS = new Set<string>([
   TEXT_MODEL, VISION_MODEL,
   ...TEXT_FALLBACKS, ...VISION_FALLBACKS,
-  "openai/gpt-oss-20b", "openai/gpt-oss-120b", "groq/compound", "groq/compound-mini",
+  "openai/gpt-oss-20b", "openai/gpt-oss-120b",
 ]);
+
 
 function normalizeHfBody(raw: any): any {
   const body = { ...raw };
@@ -536,22 +538,48 @@ async function hfChatFetch(init: any): Promise<Response> {
         body: JSON.stringify({ ...base, model }),
         signal: init?.signal,
       });
-      if (res.status !== 429 && res.status < 500) return res;
+      if (res.status < 400) return await cleanChatResponse(res);
       const txt = await res.text();
-      last = new Response(txt, { status: res.status, headers: res.headers });
+      last = new Response(txt, { status: res.status });
       if (res.status === 429) {
         const waitMs = parseRetryAfterMs(res, txt);
         console.warn(`[messenger] 429 on ${model} — waiting ${waitMs}ms (attempt ${attempt + 1})`);
         // ننتظر مرة واحدة فقط لكل نموذج، ثم ننتقل للبديل.
-        if (attempt === 0 && waitMs <= 6000) { await new Promise((r) => setTimeout(r, waitMs)); continue; }
+        if (attempt === 0 && waitMs <= 8000) { await new Promise((r) => setTimeout(r, waitMs)); continue; }
         break;
       }
-      console.warn(`[messenger] ${res.status} on ${model} — trying next`, txt.slice(0, 200));
+      if (res.status >= 500) {
+        console.warn(`[messenger] ${res.status} on ${model} — retrying/next`, txt.slice(0, 200));
+        break;
+      }
+      // 4xx غير 429 (مثل 404 نموذج غير موجود) → جرّب النموذج التالي بدل الفشل.
+      console.warn(`[messenger] ${res.status} on ${model} — trying next model`, txt.slice(0, 200));
       break;
     }
   }
   return last ?? new Response(JSON.stringify({ error: "upstream_unavailable" }), { status: 503 });
 }
+
+// إزالة نص التفكير <think>...</think> واستخدام حقل reasoning إن كان المحتوى فارغاً.
+async function cleanChatResponse(res: Response): Promise<Response> {
+  const txt = await res.text();
+  try {
+    const j = JSON.parse(txt);
+    const msg = j?.choices?.[0]?.message;
+    if (msg) {
+      let c = typeof msg.content === "string" ? msg.content : "";
+      c = c.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/^[\s\S]*?<\/think>/i, "").trim();
+      if (!c && typeof msg.reasoning === "string") {
+        c = msg.reasoning.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+      }
+      msg.content = c;
+    }
+    return new Response(JSON.stringify(j), { status: res.status, headers: { "content-type": "application/json" } });
+  } catch {
+    return new Response(txt, { status: res.status, headers: { "content-type": "application/json" } });
+  }
+}
+
 
 // ---------------------------------------------------------------------------
 
