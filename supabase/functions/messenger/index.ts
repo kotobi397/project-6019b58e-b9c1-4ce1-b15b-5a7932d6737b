@@ -461,13 +461,15 @@ function getHfKey(): string | null {
 }
 
 // نماذج بديلة عند امتلاء حصة الدقيقة (TPM) للنموذج الأساسي — كل نموذج له حصة مستقلة.
-// (يجب أن تكون موجودة فعلياً على Groq وإلا رجع 404 وفشل الرد)
-const TEXT_FALLBACKS = ["qwen/qwen3.6-27b", "groq/compound-mini", "groq/compound"];
-const VISION_FALLBACKS = ["qwen/qwen3.6-27b"];
+// نفس سلسلة AI Kotobi المجرّبة: 4 نماذج نصية بحصص منفصلة (~10k طلب/يوم مجتمعة) حتى لا
+// يقف البوت عند حد نموذج واحد. تم التحقق 2026-11-14 أنها النماذج الموجودة فعلاً على
+// حساب Groq الحالي (qwen3.6 و compound غير موجودة على الحساب وكانت ترجع 404).
+const TEXT_FALLBACKS = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "allam-2-7b"];
+// الرؤية: qwen/qwen3.8-27b هو النموذج متعدد الوسائط الوحيد على هذا الحساب — لا بديل فعلياً.
+const VISION_FALLBACKS: string[] = [];
 const ALLOWED_MODELS = new Set<string>([
   TEXT_MODEL, VISION_MODEL,
   ...TEXT_FALLBACKS, ...VISION_FALLBACKS,
-  "openai/gpt-oss-20b", "openai/gpt-oss-120b",
 ]);
 
 
