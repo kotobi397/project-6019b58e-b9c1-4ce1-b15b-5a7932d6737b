@@ -9,52 +9,36 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedPhoneLookupRouteImport } from './routes/_authenticated/phone-lookup'
-import { Route as AuthenticatedPersonasRouteImport } from './routes/_authenticated/personas'
-import { Route as AuthenticatedDripsRouteImport } from './routes/_authenticated/drips'
-import { Route as AuthenticatedCommentsRouteImport } from './routes/_authenticated/comments'
-import { Route as AuthenticatedBroadcastsRouteImport } from './routes/_authenticated/broadcasts'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as ApiPublicPhoneLookupRouteImport } from './routes/api/public/phone-lookup'
-import { Route as ApiPublicMessengerRouteImport } from './routes/api/public/messenger'
+import { Route as AuthenticatedBroadcastsRouteImport } from './routes/_authenticated/broadcasts'
+import { Route as AuthenticatedCommentsRouteImport } from './routes/_authenticated/comments'
+import { Route as AuthenticatedDripsRouteImport } from './routes/_authenticated/drips'
+import { Route as AuthenticatedPersonasRouteImport } from './routes/_authenticated/personas'
+import { Route as AuthenticatedPhoneLookupRouteImport } from './routes/_authenticated/phone-lookup'
 import { Route as ApiPublicFbCommentsRouteImport } from './routes/api/public/fb-comments'
+import { Route as ApiPublicMessengerRouteImport } from './routes/api/public/messenger'
+import { Route as ApiPublicPhoneLookupRouteImport } from './routes/api/public/phone-lookup'
 
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedPhoneLookupRoute =
-  AuthenticatedPhoneLookupRouteImport.update({
-    id: '/phone-lookup',
-    path: '/phone-lookup',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedPersonasRoute = AuthenticatedPersonasRouteImport.update({
-  id: '/personas',
-  path: '/personas',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDripsRoute = AuthenticatedDripsRouteImport.update({
-  id: '/drips',
-  path: '/drips',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCommentsRoute = AuthenticatedCommentsRouteImport.update({
-  id: '/comments',
-  path: '/comments',
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedBroadcastsRoute = AuthenticatedBroadcastsRouteImport.update({
@@ -62,14 +46,30 @@ const AuthenticatedBroadcastsRoute = AuthenticatedBroadcastsRouteImport.update({
   path: '/broadcasts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const AuthenticatedCommentsRoute = AuthenticatedCommentsRouteImport.update({
+  id: '/comments',
+  path: '/comments',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicPhoneLookupRoute = ApiPublicPhoneLookupRouteImport.update({
-  id: '/api/public/phone-lookup',
-  path: '/api/public/phone-lookup',
+const AuthenticatedDripsRoute = AuthenticatedDripsRouteImport.update({
+  id: '/drips',
+  path: '/drips',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPersonasRoute = AuthenticatedPersonasRouteImport.update({
+  id: '/personas',
+  path: '/personas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPhoneLookupRoute =
+  AuthenticatedPhoneLookupRouteImport.update({
+    id: '/phone-lookup',
+    path: '/phone-lookup',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const ApiPublicFbCommentsRoute = ApiPublicFbCommentsRouteImport.update({
+  id: '/api/public/fb-comments',
+  path: '/api/public/fb-comments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicMessengerRoute = ApiPublicMessengerRouteImport.update({
@@ -77,9 +77,9 @@ const ApiPublicMessengerRoute = ApiPublicMessengerRouteImport.update({
   path: '/api/public/messenger',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicFbCommentsRoute = ApiPublicFbCommentsRouteImport.update({
-  id: '/api/public/fb-comments',
-  path: '/api/public/fb-comments',
+const ApiPublicPhoneLookupRoute = ApiPublicPhoneLookupRouteImport.update({
+  id: '/api/public/phone-lookup',
+  path: '/api/public/phone-lookup',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -178,11 +178,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -192,39 +192,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/phone-lookup': {
-      id: '/_authenticated/phone-lookup'
-      path: '/phone-lookup'
-      fullPath: '/phone-lookup'
-      preLoaderRoute: typeof AuthenticatedPhoneLookupRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/personas': {
-      id: '/_authenticated/personas'
-      path: '/personas'
-      fullPath: '/personas'
-      preLoaderRoute: typeof AuthenticatedPersonasRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/drips': {
-      id: '/_authenticated/drips'
-      path: '/drips'
-      fullPath: '/drips'
-      preLoaderRoute: typeof AuthenticatedDripsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/comments': {
-      id: '/_authenticated/comments'
-      path: '/comments'
-      fullPath: '/comments'
-      preLoaderRoute: typeof AuthenticatedCommentsRouteImport
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/broadcasts': {
@@ -234,18 +213,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBroadcastsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+    '/_authenticated/comments': {
+      id: '/_authenticated/comments'
+      path: '/comments'
+      fullPath: '/comments'
+      preLoaderRoute: typeof AuthenticatedCommentsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/phone-lookup': {
-      id: '/api/public/phone-lookup'
-      path: '/api/public/phone-lookup'
-      fullPath: '/api/public/phone-lookup'
-      preLoaderRoute: typeof ApiPublicPhoneLookupRouteImport
+    '/_authenticated/drips': {
+      id: '/_authenticated/drips'
+      path: '/drips'
+      fullPath: '/drips'
+      preLoaderRoute: typeof AuthenticatedDripsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/personas': {
+      id: '/_authenticated/personas'
+      path: '/personas'
+      fullPath: '/personas'
+      preLoaderRoute: typeof AuthenticatedPersonasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/phone-lookup': {
+      id: '/_authenticated/phone-lookup'
+      path: '/phone-lookup'
+      fullPath: '/phone-lookup'
+      preLoaderRoute: typeof AuthenticatedPhoneLookupRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/fb-comments': {
+      id: '/api/public/fb-comments'
+      path: '/api/public/fb-comments'
+      fullPath: '/api/public/fb-comments'
+      preLoaderRoute: typeof ApiPublicFbCommentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/messenger': {
@@ -255,11 +255,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMessengerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/fb-comments': {
-      id: '/api/public/fb-comments'
-      path: '/api/public/fb-comments'
-      fullPath: '/api/public/fb-comments'
-      preLoaderRoute: typeof ApiPublicFbCommentsRouteImport
+    '/api/public/phone-lookup': {
+      id: '/api/public/phone-lookup'
+      path: '/api/public/phone-lookup'
+      fullPath: '/api/public/phone-lookup'
+      preLoaderRoute: typeof ApiPublicPhoneLookupRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
