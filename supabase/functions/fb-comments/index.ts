@@ -80,6 +80,14 @@ async function loadSettings(db: any, pageId: string): Promise<{ enabled: boolean
   };
 }
 
+// سلسلة AI Kotobi المجرّبة: 4 نماذج نصية بحصص منفصلة على Groq (تم التحقق 2026-11-14
+// أنها الموجودة فعلاً على الحساب) — عند فشل نموذج (429/5xx) نجرّب التالي بدل إسقاط الرد.
+const TEXT_CHAIN = [TEXT_MODEL, "openai/gpt-oss-120b", "openai/gpt-oss-20b", "allam-2-7b"];
+
+function stripThink(c: string): string {
+  return c.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/^[\s\S]*?<\/think>/i, "").trim();
+}
+
 async function generateReply(mistralKey: string, systemPrompt: string, commentText: string, postContext?: string): Promise<string | null> {
   const messages: any[] = [
     { role: "system", content: `${AI_COMMENT_SYSTEM_PROMPT}\n\nتخصيصات المشرف المسموح بها للنبرة أو المجال فقط، بشرط ألا تخالف قواعد الهوية أعلاه:\n${systemPrompt}\n\n${AI_COMMENT_SYSTEM_PROMPT}` },
@@ -89,17 +97,29 @@ async function generateReply(mistralKey: string, systemPrompt: string, commentTe
   }
   messages.push({ role: "user", content: `تعليق المستخدم: ${commentText}\n\nاكتب رداً مختصراً (سطر أو سطرين) دون مقدمات.` });
 
-  const res = await fetch(MISTRAL_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${mistralKey}` },
-    body: JSON.stringify({ model: TEXT_MODEL, temperature: 0.7, max_tokens: 400, messages }),
-  });
-  if (!res.ok) {
-    console.error("[fb-comments] mistral error", res.status, (await res.text()).slice(0, 200));
-    return null;
+  for (const model of TEXT_CHAIN) {
+    let res: Response;
+    try {
+      res = await fetch(MISTRAL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${mistralKey}` },
+        body: JSON.stringify({ model, temperature: 0.7, max_tokens: 400, messages }),
+      });
+    } catch (e) {
+      console.error("[fb-comments] fetch error", model, String(e).slice(0, 200));
+      continue;
+    }
+    if (!res.ok) {
+      console.error("[fb-comments] mistral error", model, res.status, (await res.text()).slice(0, 200));
+      continue;
+    }
+    const j = await res.json();
+    let c = typeof j?.choices?.[0]?.message?.content === "string" ? j.choices[0].message.content : "";
+    c = stripThink(c);
+    if (!c && typeof j?.choices?.[0]?.message?.reasoning === "string") c = stripThink(j.choices[0].message.reasoning);
+    if (c) return c;
   }
-  const j = await res.json();
-  return j?.choices?.[0]?.message?.content?.trim() || null;
+  return null;
 }
 
 async function replyToComment(commentId: string, message: string, token: string): Promise<boolean> {
