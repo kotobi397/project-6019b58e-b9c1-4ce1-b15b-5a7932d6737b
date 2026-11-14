@@ -66,24 +66,55 @@ async function loadHistory(admin: any, userKey: string): Promise<{ role: string;
   })).filter((m: any) => m.content);
 }
 
+// سلسلة AI Kotobi المجرّبة: 4 نماذج نصية بحصص منفصلة على Groq (تم التحقق 2026-11-14
+// أنها الموجودة فعلاً على الحساب). عند 429 ننتظر المدة المطلوبة مرة واحدة ثم ننتقل
+// للنموذج التالي، فلا يصل المستخدم اعتذار إلا إذا امتلأت حصص النماذج الأربعة كلها.
+const TEXT_CHAIN = [TEXT_MODEL, "openai/gpt-oss-120b", "openai/gpt-oss-20b", "allam-2-7b"];
+
+function stripThink(c: string): string {
+  return c.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/^[\s\S]*?<\/think>/i, "").trim();
+}
+
 async function callMistral(key: string, system: string, history: any[], userText: string): Promise<string> {
   const messages = [
     { role: "system", content: `${AI_ASSISTANT_SYSTEM_PROMPT}\n\nتخصيصات المشرف المسموح بها للنبرة أو المجال فقط، بشرط ألا تخالف قواعد الهوية أعلاه:\n${system}\n\n${AI_ASSISTANT_SYSTEM_PROMPT}` },
     ...history,
     { role: "user", content: userText },
   ];
-  const res = await fetch(HF_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model: TEXT_MODEL, temperature: 0.7, max_tokens: 1024, messages }),
-  });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    console.error("[whatsapp] mistral error", res.status, txt.slice(0, 200));
-    return "عذراً، حدث خطأ مؤقت. حاول مرة أخرى بعد قليل.";
+  for (const model of TEXT_CHAIN) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let res: Response;
+      try {
+        res = await fetch(HF_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+          body: JSON.stringify({ model, temperature: 0.7, max_tokens: 1024, messages }),
+        });
+      } catch (e) {
+        console.error("[whatsapp] fetch error", model, String(e).slice(0, 200));
+        break;
+      }
+      if (res.ok) {
+        const j = await res.json();
+        let c = typeof j?.choices?.[0]?.message?.content === "string" ? j.choices[0].message.content : "";
+        c = stripThink(c);
+        if (!c && typeof j?.choices?.[0]?.message?.reasoning === "string") c = stripThink(j.choices[0].message.reasoning);
+        return c || "…";
+      }
+      const txt = await res.text().catch(() => "");
+      console.error("[whatsapp] mistral error", model, res.status, txt.slice(0, 200));
+      if (res.status === 429 && attempt === 0) {
+        const m = txt.match(/try again in ([\d.]+)s/i);
+        const h = Number(res.headers.get("retry-after"));
+        const waitMs = Number.isFinite(h) && h > 0 ? Math.min(h * 1000, 8000)
+          : m ? Math.min(Math.ceil(parseFloat(m[1]) * 1000) + 400, 8000) : 2500;
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue;
+      }
+      break; // أي خطأ آخر → النموذج التالي في السلسلة
+    }
   }
-  const j = await res.json();
-  return j?.choices?.[0]?.message?.content?.trim() || "…";
+  return "عذراً، حدث خطأ مؤقت. حاول مرة أخرى بعد قليل.";
 }
 
 async function sendWhatsAppText(to: string, text: string): Promise<void> {
